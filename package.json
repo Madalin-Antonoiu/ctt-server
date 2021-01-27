@@ -1,0 +1,26 @@
+{
+  "name": "ctt-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongodb": "^3.6.3",
+    "nodemon": "^2.0.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Madalin-Antonoiu/ctt-server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Madalin-Antonoiu/ctt-server/issues"
+  },
+  "homepage": "https://github.com/Madalin-Antonoiu/ctt-server#readme"
+}
