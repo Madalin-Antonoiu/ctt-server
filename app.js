@@ -1,19 +1,38 @@
 const express = require("express");
-global.fetch = require("node-fetch");
-require("dotenv").config();
-const Cognito = require("./authentication/cognito");
-const { verify } = require("./authentication/cognito");
-
+const cors = require("cors");
 const app = express();
-
 const port = process.env.port || 3000;
+
+//The local port listening to this server's console
 app.listen(port, () => {
   console.log("Listening to 3000.");
 });
 
-app.get("/", (req, res) => {
-  res.send("Welcome to the homepage");
-});
+app.use(cors());
+
+const whitelist = [
+  "http://localhost:3001",
+  "http://localhost:3000",
+  "https://ctt1.netlify.app",
+];
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback("Not allowed by CORS");
+    }
+  },
+};
+
+app.use("/api", cors(corsOptions), require("./routes/testSendDataRoute"));
+app.get("/hey", (req, res) => res.send("ho!"));
+
+// Auth stuff
+global.fetch = require("node-fetch");
+require("dotenv").config();
+const Cognito = require("./authentication/cognito");
+const { verify } = require("./authentication/cognito");
 
 const body = {
   email: "test@gmail.com",
