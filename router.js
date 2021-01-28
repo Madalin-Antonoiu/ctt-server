@@ -1,5 +1,5 @@
+import { signup } from "./controllers/authentication.mjs";
+
 export default (app) => {
-  app.get("/", (req, res, next) => {
-    res.send(["water", "bottle", "foam"]);
-  });
+  app.post("/signup", signup);
 };
