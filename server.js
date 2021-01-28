@@ -3,13 +3,24 @@ import http from "http";
 import bodyParser from "body-parser";
 import morgan from "morgan";
 import router from "./router.js";
+import mongoose from "mongoose";
 
-// Setup
+// Init
 const port = process.env.port || 3090;
 const app = express();
 
-//App Setup
-//Express Middleware
+// DB Setup
+mongoose.connect(
+  `mongodb+srv://onespacecluster.gpwsx.mongodb.net/ctt_db?retryWrites=true&w=majority`,
+  {
+    user: process.env.MONGO_USER,
+    pass: process.env.MONGO_PASSWORD,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }
+);
+
+//App Setup & Middleware
 app.use(morgan("combined"));
 app.use(bodyParser.json({ type: "*/*" }));
 router(app);
