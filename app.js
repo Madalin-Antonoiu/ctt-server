@@ -27,6 +27,12 @@ const corsOptions = {
 
 app.use("/api", cors(corsOptions), require("./routes/testSendDataRoute"));
 app.get("/hey", (req, res) => res.send("ho!"));
+app.get("/", (req, res) => res.send("ok"));
+
+app.get("/login", cors(corsOptions), async (req, res) => {
+  const response = await Cognito.signIn(req.body.email, req.body.password);
+  console.log(response);
+});
 
 // Auth stuff
 global.fetch = require("node-fetch");
@@ -35,7 +41,7 @@ const Cognito = require("./authentication/cognito");
 const { verify } = require("./authentication/cognito");
 
 const body = {
-  email: "test@gmail.com",
+  email: "antonoiumadalin@gmail.com",
   password: "Test123456!",
 };
 
