@@ -1,6 +1,7 @@
 //Definition of what a user is to tell Mongoose
-import mongoose, { Schema } from "mongoose";
-const schema = mongoose.Schema;
+import mongoose from "mongoose";
+
+const Schema = mongoose.Schema;
 
 // Define our model
 const userSchema = new Schema({
