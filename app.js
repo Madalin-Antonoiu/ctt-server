@@ -27,7 +27,7 @@ const corsOptions = {
 
 app.use("/api", cors(corsOptions), require("./routes/testSendDataRoute"));
 app.get("/hey", (req, res) => res.send("ho!"));
-app.get("/", (req, res) => res.send("ok"));
+app.get("/", (req, res) => res.send({ status: "ok" }));
 
 app.get("/login", cors(corsOptions), async (req, res) => {
   const response = await Cognito.signIn(req.body.email, req.body.password);
