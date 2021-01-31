@@ -1,5 +1,15 @@
 import User from "../models/user.mjs";
 // import { body, validationResult } from "express-validator"; - for later // https://www.youtube.com/watch?v=YMw9_rw9kcE&list=PLPMbb3KXRmigGdxkvrGfR4RmsU4J78_BQ&index=3
+import jwt from "jwt-simple"; // https://jwt.io/
+import dotenv from "dotenv";
+
+// Init
+dotenv.config();
+
+const tokenForUser = (user) => {
+  const timestamp = new Date().getTime();
+  return jwt.encode({ sub: user.id, iat: timestamp }, process.env.SECRET);
+};
 
 export const signup = (req, res, next) => {
   const { email, password } = req.body;
@@ -25,7 +35,7 @@ export const signup = (req, res, next) => {
       if (err) return next(err);
 
       // Respond to request indicating the user was created
-      res.json({ success: true });
+      res.json({ token: tokenForUser(user) });
     });
   });
 };
