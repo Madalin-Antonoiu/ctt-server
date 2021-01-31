@@ -1,18 +1,21 @@
 import User from "../models/user.mjs";
+// import { body, validationResult } from "express-validator"; - for later // https://www.youtube.com/watch?v=YMw9_rw9kcE&list=PLPMbb3KXRmigGdxkvrGfR4RmsU4J78_BQ&index=3
 
 export const signup = (req, res, next) => {
-  // See if a user with a given email exists
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res
+      .status(422)
+      .send({ error: "You must provide email and password." });
+  }
+
   User.findOne({ email: email }, (err, existingUser) => {
-    //Database connection error
-    if (err) return next(err); // here i am getting the error, with findOne
+    if (err) return next(err);
 
-    // If the user does exist, return error
     if (existingUser)
-      return res.status(422).send({ error: "Email is in use." }); // 422- Unprocessable entity
+      return res.status(422).send({ error: "Email is in use." });
 
-    // If the user not exist, create and save user record and respond to request
     const user = new User({
       email: email,
       password: password,
@@ -20,8 +23,6 @@ export const signup = (req, res, next) => {
 
     user.save((err) => {
       if (err) return next(err);
-
-      //Respond to request indicating the user was created
       res.json(user);
     });
   });
