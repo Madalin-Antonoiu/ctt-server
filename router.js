@@ -1,5 +1,5 @@
 import { SignUp, SignIn } from "./controllers/authentication.mjs";
-import passportService from "./services/passport.mjs"; // must be included
+import passportService from "./services/passport.mjs"; // must be included for things to work properly here
 import passport from "passport";
 
 //creating the Passport middleware
