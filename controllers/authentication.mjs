@@ -8,10 +8,10 @@ dotenv.config();
 
 const tokenForUser = (user) => {
   const timestamp = new Date().getTime();
-  return jwt.encode({ sub: user.id, iat: timestamp }, process.env.SECRET);
+  return jwt.encode({ sub: user.id, iat: timestamp }, process.env.JWT_SECRET);
 };
 
-export const signup = (req, res, next) => {
+export const SignUp = (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -22,9 +22,9 @@ export const signup = (req, res, next) => {
 
   User.findOne({ email: email }, (err, existingUser) => {
     if (err) return next(err);
-
-    if (existingUser)
+    if (existingUser) {
       return res.status(422).send({ error: "Email is in use." });
+    }
 
     const user = new User({
       email: email,
@@ -33,9 +33,12 @@ export const signup = (req, res, next) => {
 
     user.save((err) => {
       if (err) return next(err);
-
-      // Respond to request indicating the user was created
       res.json({ token: tokenForUser(user) });
     });
   });
+};
+
+export const SignIn = (req, res, next) => {
+  // User has already had their email and password authed, we just need to give them a JWT token
+  res.send({ token: tokenForUser(req.user) });
 };
