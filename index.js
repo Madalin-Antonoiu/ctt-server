@@ -14,7 +14,7 @@ const app = express();
 
 // Only accept POST requests from this adress.
 var corsOptions = {
-  origin: "https://cryptogolem.netlify.app",
+  origin: process.env.CORS_ALLOWED_ORIGIN,
   optionsSuccessStatus: 200,
   methods: "POST",
 };
