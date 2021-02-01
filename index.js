@@ -5,11 +5,19 @@ import morgan from "morgan";
 import router from "./router.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import cors from "cors";
 
 // Init
 dotenv.config();
 const port = process.env.port || 3090;
 const app = express();
+
+// Only accept POST requests from this adress.
+var corsOptions = {
+  origin: "https://cryptogolem.netlify.app",
+  optionsSuccessStatus: 200,
+  methods: "POST",
+};
 
 // DB Setup
 mongoose.connect(process.env.MONGO_URI, {
@@ -24,6 +32,7 @@ mongoose.connection.on("connected", () =>
 
 //App Setup & Middleware
 app.use(morgan("combined"));
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ type: "*/*" }));
 router(app);
 
