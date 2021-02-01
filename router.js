@@ -7,8 +7,11 @@ const requireAuth = passport.authenticate("jwt", { session: false }); // when a 
 const requireSignIn = passport.authenticate("local", { session: false });
 
 export default (app) => {
-  app.get("/", requireAuth, (req, res) => {
-    res.send({ hi: "there" });
+  app.get("/", (req, res) => {
+    res.send({ message: "ok" });
+  });
+  app.get("/feature", requireAuth, (req, res) => {
+    res.send({ secret: "this is Your authenticated secret" });
   });
   app.post("/signin", requireSignIn, SignIn);
   app.post("/signup", SignUp);
