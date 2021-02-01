@@ -1,4 +1,5 @@
 import { SignUp, SignIn } from "./controllers/authentication.mjs";
+import { exchangeInfo } from "./controllers/binance.mjs";
 import passportService from "./services/passport.mjs"; // must be included for things to work properly here
 import passport from "passport";
 
@@ -15,4 +16,7 @@ export default (app) => {
   });
   app.post("/signin", requireSignIn, SignIn);
   app.post("/signup", SignUp);
+
+  //Binance related routes
+  app.post("/exchangeInfo", requireAuth, exchangeInfo);
 };
