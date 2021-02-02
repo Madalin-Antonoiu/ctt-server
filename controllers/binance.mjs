@@ -12,3 +12,26 @@ export const exchangeInfo = async (req, res, next) => {
     return res.status(422).send({ error: e });
   }
 };
+
+export const tickerAll = async (req, res, next) => {
+  try {
+    // const binanceSocket = new WebSocket(
+    //     `wss://stream.binance.com:9443/ws/!ticker@arr`
+    //   );
+
+    // binanceSocket.onmessage = function (event) {
+    //   var message = JSON.parse(event.data);
+    // };
+
+    // binanceSocket.onopen = () => {
+    //   console.log("Candlestick Stream open.");
+    // };
+    // binanceSocket.onclose = () => {
+    //   console.log("Candlestick Stream closed");
+    // };
+
+    res.json("hi");
+  } catch (e) {
+    return res.status(422).send({ error: e });
+  }
+};
