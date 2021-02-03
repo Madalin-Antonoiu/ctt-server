@@ -6,19 +6,21 @@ import router from "./router.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
-import WebSocket from "ws";
+// import redis from "redis";
 
-// Init
 dotenv.config();
 const port = process.env.port || 3090;
 const app = express();
-
-// Only accept POST requests from this adress.
-var corsOptions = {
+const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGIN,
   optionsSuccessStatus: 200,
   methods: "POST",
 };
+// const redisOptions = {
+//   host: "replica.redis-node-binance.enp13j.euw2.cache.amazonaws.com",
+//   port: 6379,
+// };
+// const client = redis.createClient(redisOptions);
 
 // DB Setup
 mongoose.connect(process.env.MONGO_URI, {
@@ -26,7 +28,6 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
   useCreateIndex: true, //https://github.com/Automattic/mongoose/issues/6890
 });
-
 mongoose.connection.on("connected", () =>
   console.log("Connected to database.")
 );
@@ -41,3 +42,5 @@ router(app);
 const server = http.createServer(app);
 server.listen(port);
 console.log("Server listening on", port);
+
+//Redis
