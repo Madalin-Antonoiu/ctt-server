@@ -8,13 +8,16 @@ import dotenv from "dotenv";
 import cors from "cors";
 // import redis from "redis";
 
+
+
+
 dotenv.config();
-const port = process.env.port || 3090;
+const port = process.env.port || 3000;
 const app = express();
 const corsOptions = {
   origin: process.env.CORS_ALLOWED_ORIGIN,
   optionsSuccessStatus: 200,
-  methods: "POST",
+  methods: "POST", // ONLY ACCEPTING POST
 };
 // const redisOptions = {
 //   host: "replica.redis-node-binance.enp13j.euw2.cache.amazonaws.com",
