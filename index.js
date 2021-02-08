@@ -59,22 +59,39 @@ const server = http.createServer(app);
 server.listen(port);
 console.log("Server listening on", port);
 
-//Redis
 
 // Websocket - extract it into separate file
 const wsRobot = async () => {
   var globalData = [];
-  // var arr = [];
 
   const handleMessage = (data) => {
-    // Return a new array, formed by only the last 24h USDT coins that changed ( a little unconsisstent for monitoring)
     const newArray = data?.filter((obj) => {
+
+      const priceAlert = (symbol, price) => {
+        if (obj.s === symbol) {
+          let zeroPointZeroFivePercent = (0.0005 * price); // If price is 1650$, this is 4.125$;
+          if (obj.c === price) {
+            return `${symbol} is equal to target ${price}$`
+          } else if (obj.c > price && obj.c <= price + zeroPointZeroFivePercent
+          ) {
+            return `${symbol} is ${parseInt(obj.c - price)} more than target price.`
+          } else if (obj.c < price && obj.c >= price - zeroPointZeroFivePercent) {
+            return `${symbol} is ${parseInt(price - obj.c)} less than target price.`
+          }
+        }
+      }
+
       if (obj.s.includes("USDT")) {
 
-        if (obj.s === "BTCUSDT") {
-          console.log(obj.s + ": " + parseInt(obj.c), numberWithCommas(obj.v), {
+        if (obj.s === "ETHUSDT") { 
+          console.log(obj.s + ": " + parseFloat(obj.c).toFixed(2), numberWithCommas(obj.v), {
             $: numberWithCommas(obj.q),
           });
+        }
+
+        const coinn = priceAlert("ETHUSDT", 1651);
+        if (coinn) {
+          console.log(coinn);
         }
 
         return obj;
@@ -88,32 +105,6 @@ const wsRobot = async () => {
     //console.log(newArray, { Total: newArray.length });
 
 
-
-
-    const priceAlert = (symbol, price) => {
-      return newArray.filter((coin) => {
-        if (coin.s === symbol) {
-
-          let zeroPointZeroFivePercent = (0.0005 * price); // If price is 1650$, this is 4.125$;
-
-          if (coin.c === price) {
-            return `${symbol} is equal to target ${price}$`
-          } else if (coin.c > price && coin.c <= price + zeroPointZeroFivePercent
-          ) {
-            return `${symbol} is within +${zeroPointZeroFivePercent} of target ${price}`
-          } else if (coin.c < price && coin.c >= price - zeroPointZeroFivePercent) {
-            return `${symbol} is within -${zeroPointZeroFivePercent} of target ${price}`
-          }
-        }
-      })
-    }
-
-
-
-    // const btc = priceAlert("BTCUSDT", 39400 );
-    // if(btc){
-    //   console.log(btc);
-    // }
   };
 
 
