@@ -14,6 +14,29 @@ export const exchangeInfo = async (req, res, next) => {
   }
 };
 
+export const tickerAll = async (req, res, next) => {
+  try {
+    // const binanceSocket = new WebSocket(
+    //     `wss://stream.binance.com:9443/ws/!ticker@arr`
+    //   );
+
+    // binanceSocket.onmessage = function (event) {
+    //   var message = JSON.parse(event.data);
+    // };
+
+    // binanceSocket.onopen = () => {
+    //   console.log("Candlestick Stream open.");
+    // };
+    // binanceSocket.onclose = () => {
+    //   console.log("Candlestick Stream closed");
+    // };
+
+    res.json("hi");
+  } catch (e) {
+    return res.status(422).send({ error: e });
+  }
+};
+
 export const internalExchangeInfo = async () => {
   try {
     let constrObj = {
@@ -28,6 +51,8 @@ export const internalExchangeInfo = async () => {
     const response = await binance.get(
       `https://api.binance.com/api/v3/exchangeInfo`
     );
+
+    console.log("Got Exchange info.");
 
     constrObj["serverTime"] = new Date(
       response.data.serverTime
@@ -60,28 +85,5 @@ export const internalExchangeInfo = async () => {
     return constrObj;
   } catch (e) {
     return e;
-  }
-};
-
-export const tickerAll = async (req, res, next) => {
-  try {
-    // const binanceSocket = new WebSocket(
-    //     `wss://stream.binance.com:9443/ws/!ticker@arr`
-    //   );
-
-    // binanceSocket.onmessage = function (event) {
-    //   var message = JSON.parse(event.data);
-    // };
-
-    // binanceSocket.onopen = () => {
-    //   console.log("Candlestick Stream open.");
-    // };
-    // binanceSocket.onclose = () => {
-    //   console.log("Candlestick Stream closed");
-    // };
-
-    res.json("hi");
-  } catch (e) {
-    return res.status(422).send({ error: e });
   }
 };

@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import WebSocket from "ws";
+import _ from "lodash";
 // import redis from "redis";
 
 import { internalExchangeInfo } from "./controllers/binance.mjs";
@@ -50,15 +51,9 @@ console.log("Server listening on", port);
 
 // Websocket - extract it into separate file
 const wsRobot = async () => {
-  const getExchange = await internalExchangeInfo();
-  // Run internalExchangeInfo() and save it to DB every 30 minutes, and cache it into REDIS; // OR save it to REDIS directly?
-  // every minute, run the REST API to Binance, get the updated data, compare it with the cache, save the comparison into Redis
-  // if anything changed vs last minute check, alert me
-  // remove -1 redis key value pair, only keep now and previous.
-
-  console.log(getExchange); // obj props: tradingBTC, tradingUSDT, noTradingBTC,noTradingUSDT, tradingOnlyBTC
-
   var globalData = [];
+  var arr = [];
+
   const handleMessage = (data) => {
     // Return a new array, formed by only the last 24h USDT coins that changed ( a little unconsisstent for monitoring)
     const newArray = data?.filter((obj) => {
@@ -71,17 +66,59 @@ const wsRobot = async () => {
     //console.log(newArray, { Total: newArray.length });
   };
 
+  const combinedStreamMessage = (data) => {
+    console.log(data);
+  };
+
+  const numberWithCommas = (x) => {
+    return parseInt(x)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  // Run internalExchangeInfo() and save it to DB every 30 minutes, and cache it into REDIS; // OR save it to REDIS directly?
+  // every minute, run the REST API to Binance, get the updated data, compare it with the cache, save the comparison into Redis
+  // if anything changed vs last minute check, alert me
+  // remove -1 redis key value pair, only keep now and previous.
+  const getExchange = await internalExchangeInfo();
+  //console.log(getExchange); // obj props: tradingBTC, tradingUSDT, noTradingBTC,noTradingUSDT, tradingOnlyBTC
+
+  //Create ticker string for binanceSocket
+  let str =
+    getExchange.tradingUSDT
+      .map((coin) => coin["symbol"].toLowerCase())
+      .toString()
+      .replace(/,/g, "@ticker/") + "@ticker";
+
+  console.log(getExchange.tradingUSDT.length);
+
+  //!ticker@arr , ${str} , btcusdt@ticker/ethusdt@ticker/aaveusdt@ticker
   const binanceSocket = new WebSocket(
-    `wss://stream.binance.com:9443/ws/!ticker@arr`
+    `wss://stream.binance.com:9443/ws/${str}`
   );
 
   // Every second, on every string message...
   binanceSocket.onmessage = function (event) {
     const data = JSON.parse(event.data);
-    handleMessage(data);
+    //handleMessage(data);
+    //combinedStreamMessage(data);
 
     //console.log(data);
+    //console.log(event);
+
+    _.mergeById(arr, data, "s");
   };
+
+  setInterval(() => {
+    //console.log(arr);
+    arr.filter((obj) => {
+      if (obj.s === "BTCUSDT") {
+        console.log(obj.s + ": " + parseInt(obj.c), numberWithCommas(obj.v), {
+          $: numberWithCommas(obj.q),
+        });
+      }
+    });
+  }, 2000);
 
   binanceSocket.onopen = () => {
     console.log("Stream open");
@@ -103,6 +140,25 @@ const wsRobot = async () => {
   binanceSocket.onclose = () => {
     console.log("Stream closed");
   };
+
+  _.mixin({
+    mergeById: function mergeById(arr, obj, idProp) {
+      var index = _.findIndex(arr, function (elem) {
+        // double check, since undefined === undefined
+        return (
+          typeof elem[idProp] !== "undefined" && elem[idProp] === obj[idProp]
+        );
+      });
+
+      if (index > -1) {
+        arr[index] = obj;
+      } else {
+        arr.push(obj);
+      }
+
+      return arr;
+    },
+  });
 };
 
-// wsRobot();
+//wsRobot();
