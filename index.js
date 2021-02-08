@@ -30,8 +30,22 @@ const client = redis.createClient(redisOptions);
 client.on("error", function (error) {
   console.error(error);
 });
-client.set("what", "TrenulBinance", redis.print);
-client.get("what", redis.print);
+client.on("connect", (ev) => {
+  console.log("Redis connected.");
+  client.set("foo", "TO THE MOON");
+
+  client.get("foo", (err, reply) => {
+    // reply is null when the key is missing
+    console.log(reply);
+  });
+
+
+});
+
+
+
+
+
 
 
 // DB Setup
@@ -58,3 +72,4 @@ console.log("Server listening on", port);
 
 const communi = new Communication();
 communi.start();
+
