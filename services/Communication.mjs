@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
+import { internalExchangeInfo } from "../controllers/binance.mjs"
 
 dotenv.config();
 
@@ -15,7 +16,13 @@ class Communication {
     telegramBot() {
         this.bot.start((ctx) => ctx.reply('Welcome - /help \n - /start \n - /eth'))
         this.bot.help((ctx) => ctx.reply('- /help \n - /start \n - /eth'))
-        this.bot.command("eth", (ctx) => ctx.reply("Wwill fetch the price , eventually..."))
+        // Commands
+        this.bot.command("exchangeInfo", async (ctx) => {
+            ctx.reply("Obtaining information...");
+            const result = await internalExchangeInfo();
+            // Run the exchangeInfo API
+            ctx.reply(`USDT - Active : ${result.tradingUSDT.length}, Parked: ${result.parkedUSDT.length}\n BTC - Active : ${result.tradingBTC.length}, Parked: ${result.parkedBTC.length}  `);
+        });
         this.bot.launch();
         console.log("Telegraf bot launched.");
 
@@ -105,7 +112,6 @@ class Communication {
             }
         }
     }
-
 }
 
 

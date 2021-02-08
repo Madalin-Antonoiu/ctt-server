@@ -42,9 +42,9 @@ export const internalExchangeInfo = async () => {
     let constrObj = {
       serverTime: null,
       tradingUSDT: [],
-      noTradingUSDT: [],
+      parkedUSDT: [],
       tradingBTC: [],
-      noTradingBTC: [],
+      parkedBTC: [],
       tradingOnlyBTC: [],
     };
     // This must be put somewhere unaccessible from client, and here just fetch latest data from a local database
@@ -67,10 +67,10 @@ export const internalExchangeInfo = async () => {
       }
 
       if (symbol.quoteAsset === "USDT" && symbol.status !== "TRADING") {
-        constrObj["noTradingUSDT"] = [...constrObj["noTradingUSDT"], symbol];
+        constrObj["parkedUSDT"] = [...constrObj["parkedUSDT"], symbol];
       }
       if (symbol.quoteAsset === "BTC" && symbol.status !== "TRADING") {
-        constrObj["noTradingBTC"] = [...constrObj["noTradingBTC"], symbol];
+        constrObj["parkedBTC"] = [...constrObj["parkedBTC"], symbol];
       }
 
       return true;
