@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import WebSocket from "ws";
 import _ from "lodash";
+import { Telegraf } from "telegraf";
 // import redis from "redis";
 
 import { internalExchangeInfo } from "./controllers/binance.mjs";
@@ -20,6 +21,17 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   methods: "POST", // ONLY ACCEPTING POST
 };
+
+//Telegram Init
+const bot = new Telegraf(process.env.BOT_TOKEN)
+bot.start((ctx) => ctx.reply('Welcome - /help \n - /start \n - /eth'))
+bot.help((ctx) => ctx.reply('- /help \n - /start \n - /eth'))
+bot.hears("btc", (ctx) => ctx.reply("You mentioned BTC, nice"))
+bot.command("eth", (ctx) => ctx.reply("Wwill fetch the price , eventually..."))
+
+bot.launch();
+console.log("Telegraf bot launched.");
+
 // const redisOptions = {
 //   host: "replica.redis-node-binance.enp13j.euw2.cache.amazonaws.com",
 //   port: 6379,
@@ -52,23 +64,58 @@ console.log("Server listening on", port);
 // Websocket - extract it into separate file
 const wsRobot = async () => {
   var globalData = [];
-  var arr = [];
+  // var arr = [];
 
   const handleMessage = (data) => {
     // Return a new array, formed by only the last 24h USDT coins that changed ( a little unconsisstent for monitoring)
     const newArray = data?.filter((obj) => {
       if (obj.s.includes("USDT")) {
+
+        if (obj.s === "BTCUSDT") {
+          console.log(obj.s + ": " + parseInt(obj.c), numberWithCommas(obj.v), {
+            $: numberWithCommas(obj.q),
+          });
+        }
+
         return obj;
       }
+
+
+
     });
 
     globalData = newArray;
     //console.log(newArray, { Total: newArray.length });
+
+
+
+
+    const priceAlert = (symbol, price) => {
+      return newArray.filter((coin) => {
+        if (coin.s === symbol) {
+
+          let zeroPointZeroFivePercent = (0.0005 * price); // If price is 1650$, this is 4.125$;
+
+          if (coin.c === price) {
+            return `${symbol} is equal to target ${price}$`
+          } else if (coin.c > price && coin.c <= price + zeroPointZeroFivePercent
+          ) {
+            return `${symbol} is within +${zeroPointZeroFivePercent} of target ${price}`
+          } else if (coin.c < price && coin.c >= price - zeroPointZeroFivePercent) {
+            return `${symbol} is within -${zeroPointZeroFivePercent} of target ${price}`
+          }
+        }
+      })
+    }
+
+
+
+    // const btc = priceAlert("BTCUSDT", 39400 );
+    // if(btc){
+    //   console.log(btc);
+    // }
   };
 
-  const combinedStreamMessage = (data) => {
-    console.log(data);
-  };
 
   const numberWithCommas = (x) => {
     return parseInt(x)
@@ -80,45 +127,48 @@ const wsRobot = async () => {
   // every minute, run the REST API to Binance, get the updated data, compare it with the cache, save the comparison into Redis
   // if anything changed vs last minute check, alert me
   // remove -1 redis key value pair, only keep now and previous.
-  const getExchange = await internalExchangeInfo();
+  //const getExchange = await internalExchangeInfo();
   //console.log(getExchange); // obj props: tradingBTC, tradingUSDT, noTradingBTC,noTradingUSDT, tradingOnlyBTC
 
   //Create ticker string for binanceSocket
-  let str =
-    getExchange.tradingUSDT
-      .map((coin) => coin["symbol"].toLowerCase())
-      .toString()
-      .replace(/,/g, "@ticker/") + "@ticker";
+  // let str =
+  //   getExchange.tradingUSDT
+  //     .map((coin) => coin["symbol"].toLowerCase())
+  //     .toString()s
+  //     .replace(/,/g, "@ticker/") + "@ticker";
 
-  console.log(getExchange.tradingUSDT.length);
+  // console.log(getExchange.tradingUSDT.length);
 
   //!ticker@arr , ${str} , btcusdt@ticker/ethusdt@ticker/aaveusdt@ticker
   const binanceSocket = new WebSocket(
-    `wss://stream.binance.com:9443/ws/${str}`
+    `wss://stream.binance.com:9443/ws/!ticker@arr`
   );
 
   // Every second, on every string message...
   binanceSocket.onmessage = function (event) {
     const data = JSON.parse(event.data);
-    //handleMessage(data);
-    //combinedStreamMessage(data);
 
-    //console.log(data);
+
+    handleMessage(data);
+
+
+
+
     //console.log(event);
 
-    _.mergeById(arr, data, "s");
+    //_.mergeById(arr, data, "s");
   };
 
-  setInterval(() => {
-    //console.log(arr);
-    arr.filter((obj) => {
-      if (obj.s === "BTCUSDT") {
-        console.log(obj.s + ": " + parseInt(obj.c), numberWithCommas(obj.v), {
-          $: numberWithCommas(obj.q),
-        });
-      }
-    });
-  }, 2000);
+  // setInterval(() => {
+  //   //console.log(arr);
+  //   arr.filter((obj) => {
+  //     if (obj.s === "BTCUSDT") {
+  //       console.log(obj.s + ": " + parseInt(obj.c), numberWithCommas(obj.v), {
+  //         $: numberWithCommas(obj.q),
+  //       });
+  //     }
+  //   });
+  // }, 2000);
 
   binanceSocket.onopen = () => {
     console.log("Stream open");
@@ -161,4 +211,4 @@ const wsRobot = async () => {
   });
 };
 
-//wsRobot();
+wsRobot();
