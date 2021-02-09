@@ -89,10 +89,12 @@ class Communication {
                 let response = JSON.parse(reply);
 
                 if (result.tradingUSDT.length !== response.tradingUSDT.length) {
+                    this.bot.telegram.sendMessage(this.golemID, `MONEDA NOUA !!!`);
                     let monedaNoua = differenceBy(result.tradingUSDT, response.tradingUSDT, "baseAsset");
                     this.bot.telegram.sendMessage(this.golemID, `MONEDA NOUA : ${monedaNoua} !!! `);
+
                 } else {
-                    this.bot.telegram.sendMessage(this.golemDebugID, `No difference. \n Now: ,${result.tradingUSDT.length}, Redis: ${response.tradingUSDT.length}`);
+                    this.bot.telegram.sendMessage(this.golemDebugID, `No difference. \nNow: ${result.tradingUSDT.length}, Redis: ${response.tradingUSDT.length}(${response.serverTime})`);
                 }
             });
 
