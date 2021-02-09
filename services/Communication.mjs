@@ -149,7 +149,7 @@ class Communication {
         //2.Websocket is launched in Constructor. Listen to it
         this.binanceSocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            this.helpers.discoverCoins(data);
+            this.helpers.discoverCoins(data); // feed data into this function every time it comes (1000ms)
         };
         this.binanceSocket.onopen = () => {
             console.log("Stream open");
@@ -168,15 +168,16 @@ class Communication {
             console.log("Redis connected.");
         });
 
-        console.log("Will save prices to Redis in 60s.")
-
         setInterval(() => {
             this.helpers.savePricesToRedisEveryMinute();
-            console.log("Saved to Redis.")
-        }, 60000)
-        // Data comes every second from websocket.  Save it to Redis every x seconds for comparison later
-        // Keep Comparing it to Redis
-        // Alert for each coin if profitable
+        }, 60000)// 1m
+
+        setInterval(() => {
+            // In reality, i should read the value first, extract last and leave it there, for 1h data
+            this.redisClient.set("usdtMarketPrices", "");
+            this.bot.telegram.sendMessage(this.golemDebugID, "Debug, every hour i  clear Redis 'usdtMarketPrices' ");
+        }, 3600000) //1h
+
 
     }
     helpers = {
@@ -235,9 +236,11 @@ class Communication {
                 }
             }
         },
+
+        // Related
         discoverCoins: (data) => {
 
-            //Data is an array with coins that changed vs 24h ago. Save prices to redis every 1 min
+            //Data is an array with coins that changed vs 24h ago
             try {
                 const newArray = data?.filter((obj) => {
 
@@ -267,22 +270,99 @@ class Communication {
             } catch (e) {
                 console.log(e)
             }
-            // Save to Redis every 60 seconds/ 1 minute - 
-            // Compare coinsUSDT every second against it 
 
+            // Save prices to Redis every minute - 
+            // DONE : savePricesToRedisEveryMinute()
+
+            // Compare coinsUSDT every second against it 
+            // Read from Redis every second
+            this.redisClient.get("usdtMarketPrices", (err, reply) => {
+                if (err) {
+                    console.log("ERROR reading every second");
+                }
+
+                if (reply !== "") {
+                    let redisAsObj = JSON.parse(reply);
+                    //console.log("Redis READ:", redisAsObj, reply.length); //, "Wsocket:", this.coinsUSDT - IMPORTANT DEBUG
+
+                    // At this point i have this.coinsUSDT array of objects containing data every sec about coins that changed last 24h
+                    // And redisAsObj which has an array of objects every minute saving price data
+
+                    //compareToAMinuteAgo() - i get last element's price of redisAsObj array (supposed to be past minute), let`s say SFPUSDT
+                    // i also get SFPUSDT from this.coinsUSDT( if it exists, this is very unconsistent API)
+                    // console log both, every second
+                    //console.log(redisAsObj);
+
+
+                    // I should probably create a new array
+                    // containing the ever changing new second data, and the minute past
+                    // then it would be easy to compare them and inform
+
+
+                    let pastMinute = redisAsObj[redisAsObj.length - 1];
+
+                    pastMinute.USDT_ALL.filter((obj) => {
+                        if (obj.symbol === "SFPUSDT") {
+
+                            // Reading SFPUSDT from Redis DB every second ( it gets new data every minute, and compares only with last element, 1 min ago)
+                            console.log({
+                                time: pastMinute.serverTime,
+                                symbol: obj.symbol,
+                                price: obj.price
+                            })
+
+
+                        }
+                    })
+
+                    console.log(this.coinsUSDT);
+
+                    // console.log(sfp);
+
+
+                }
+
+            })
+
+            // Compare price now with prices there
+            // Say something about it 
 
             //console.log(this.coinsUSDT); // Around 80.500 length containing all USDT coins data, updated every second
         },
         savePricesToRedisEveryMinute: async () => {
             const response = await getUSDTPrices();
+            console.log(response);
 
-            if (response) {
-                console.log(response);
-                console.log(this.coinsUSDT)
-            } else {
-                console.error("Error")
+            try {
+                this.redisClient.get("usdtMarketPrices", (err, reply) => {
+                    if (err) this.bot.telegram.sendMessage(this.golemDebugID, err);
+
+                    if (reply === "") { // first time only, append entire response.data array
+                        this.redisClient.set("usdtMarketPrices", JSON.stringify(response.data));
+                    }
+
+                    if (reply !== "") {
+                        let destring = JSON.parse(reply);
+                        let attachNewData = [...destring, response.data[0]];
+                        this.redisClient.set("usdtMarketPrices", JSON.stringify(attachNewData)); // every other, append to the response.data array the new object
+                    }
+
+                    //let addNewDataToTheOld = JSON.stringify(response) + reply; // apend to data array, then stringify everything
+
+                    // this.bot.telegram.sendMessage(this.golemDebugID, `Market Prices: ${response.data.USDT_ALL?.length} at ${response.data.serverTime}`);
+                    return true
+
+                });
+
+                // save prices to redis in this format
+                // console.log(response);
+                // console.log(this.coinsUSDT)
+            } catch (e) {
+                console.error(e)
+                this.bot.telegram.sendMessage(this.golemDebugID, e);
             }
-        }
+        },
+
     }
 }
 
