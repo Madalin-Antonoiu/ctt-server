@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
 import { internalExchangeInfo, getUSDTPrices } from "../controllers/binance.mjs"
-import differenceBy from "lodash/differenceBy.js";
+import _ from "lodash";
 import redis from "redis";
 
 
@@ -88,7 +88,7 @@ class Communication {
 
                 if (result.tradingUSDT.length !== response.tradingUSDT.length) {
                     this.bot.telegram.sendMessage(this.golemID, `MONEDA NOUA !!!`);
-                    let monedaNoua = differenceBy(result.tradingUSDT, response.tradingUSDT, "baseAsset");
+                    let monedaNoua = _.differenceBy(result.tradingUSDT, response.tradingUSDT, "baseAsset");
                     this.bot.telegram.sendMessage(this.golemID, `MONEDA NOUA : ${monedaNoua} !!! `);
 
                 } else {
@@ -300,10 +300,26 @@ class Communication {
                     // then it would be easy to compare them and inform
 
 
-
                     let pastMinute = redisAsObj[redisAsObj.length - 1];
-                    let lastMinuteArray = [pastMinute, this.coinsUSDT]
-                    console.log(lastMinuteArray);
+                    const result = _.merge(pastMinute.USDT_ALL, this.coinsUSDT.data)
+                    let lastMinuteArray = [{ wsTime: this.coinsUSDT.time }, { pastMinute: pastMinute.serverTime }, { combined: result }]; // this is 1s ago to 59 s ago, then renews 
+                    // console.log(lastMinuteArray);
+
+                    // console.log(lastMinuteArray[2].combined);
+
+                    lastMinuteArray[2].combined?.filter((obj) => {
+                        if (obj.symbol === "ETHUSDT") {
+                            console.log(`ETHUSDT , Now:(${this.coinsUSDT.time})`, obj.c, `PastMinute(${pastMinute.serverTime})`, obj.price)
+                        }
+                    })
+
+
+
+                    // I should combine the two containing the same symbol, then i print the difference
+
+                    // const btcNowVsOneToFiftyNineSecondsAgo
+
+
                     // pastMinute.USDT_ALL.filter((obj) => {
                     //     if (obj.symbol === "SFPUSDT") {
 
