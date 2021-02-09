@@ -4,6 +4,10 @@ import dotenv from "dotenv";
 import { internalExchangeInfo, getUSDTPrices } from "../controllers/binance.mjs"
 import _ from "lodash";
 import redis from "redis";
+import cron from "node-cron";
+
+
+
 
 
 dotenv.config();
@@ -168,9 +172,15 @@ class Communication {
             console.log("Redis connected.");
         });
 
-        setInterval(() => {
+        // setInterval(() => {
+
+        // }, 60000)// 1m
+
+        cron.schedule('0-59 * * * *', () => {
+            console.log('running every minute from 0 from 59');
             this.helpers.savePricesToRedisEveryMinute();
-        }, 60000)// 1m
+        });
+
 
         setInterval(() => {
             // In reality, i should read the value first, extract last and leave it there, for 1h data
@@ -305,77 +315,63 @@ class Communication {
                     let lastMinuteArray = [{ wsTime: this.coinsUSDT.time }, { pastMinute: pastMinute.serverTime }, { combined: result }]; // this is 1s ago to 59 s ago, then renews 
 
 
-                    let threeMinutesAgo = redisAsObj[redisAsObj.length - 3];
-                    const result2 = _.merge(threeMinutesAgo.USDT_ALL, this.coinsUSDT.data)
-                    let threeMinutesAgoArray = [{ wsTime: this.coinsUSDT.time }, { threeMinutesAgo: threeMinutesAgo.serverTime }, { combined: result2 }]; // this is 1s ago to 59 s ago, then renews 
 
+                    const lm = lastMinuteArray[2].combined?.find(obj => obj.symbol === "ETHUSDT");
 
+                    const log = (obj) => {
 
-                    lastMinuteArray[2].combined?.filter((obj) => {
-                        if (obj.symbol === "ETHUSDT") {
-                            let priceNow = parseFloat(obj.c);
-                            let pastMinutePrice = parseFloat(obj.price);
-                            let difference = "";
+                        let priceNow = parseFloat(obj.c);
+                        let pastMinutePrice = parseFloat(obj.price);
+                        let difference = "";
 
-                            if (priceNow >= pastMinutePrice) {
-                                difference = `+${parseFloat(priceNow - pastMinutePrice).toFixed(2)}`;
-
-                            }
-                            if (pastMinutePrice > priceNow) {
-                                difference = `-${parseFloat(pastMinutePrice - priceNow).toFixed(2)}`;
-                            }
-
-                            //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
-                            console.log(`ETHUSDT (1m):`, priceNow, `(${difference}$)`, " vs ", pastMinutePrice, `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
-
+                        if (priceNow >= pastMinutePrice) {
+                            difference = `+${parseFloat(priceNow - pastMinutePrice).toFixed(2)}`;
 
                         }
-                    })
-                    threeMinutesAgoArray[2].combined?.filter((obj) => {
-                        if (obj.symbol === "ETHUSDT") {
-                            let priceNow = parseFloat(obj.c);
-                            let threeMinutesAgoPrice = parseFloat(obj.price);
-                            let difference = "";
-
-                            if (priceNow >= threeMinutesAgoPrice) {
-                                difference = `+${parseFloat(priceNow - threeMinutesAgoPrice).toFixed(2)}`;
-
-                            }
-                            if (threeMinutesAgoPrice > priceNow) {
-                                difference = `-${parseFloat(threeMinutesAgoPrice - priceNow).toFixed(2)}`;
-                            }
-
-                            //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
-                            console.log(`ETHUSDT (3m):`, priceNow, `(${difference}$)`, " vs ", threeMinutesAgoPrice, `(${threeMinutesAgo.serverTime.replace("09/02/2021,", "")} )`)
-
-
+                        if (pastMinutePrice > priceNow) {
+                            difference = `-${parseFloat(pastMinutePrice - priceNow).toFixed(2)}`;
                         }
-                    })
+
+                        //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
+                        return {
+                            data: `ETHUSDT (1m): ${priceNow}(${difference}$) vs  ${pastMinutePrice}(${pastMinute.serverTime.replace("09/02/2021,", "")})`
+                        }
+
+                    }
+
+                    if (lm) {
+                        console.log(log(lm).data);
+                    }
 
 
+                    //console.log(threeMinutesAgo); undefined until 3m of data are present
+                    // let threeMinutesAgo = redisAsObj[redisAsObj.length - 4];
+                    // if (threeMinutesAgo) {
+                    //     const result2 = _.merge(threeMinutesAgo?.USDT_ALL, this.coinsUSDT.data)
+                    //     let threeMinutesAgoArray = [{ wsTime: this.coinsUSDT.time }, { threeMinutesAgo: threeMinutesAgo.serverTime }, { combined: result2 }]; // this is 1s ago to 59 s ago, then renews 
 
-                    // I should combine the two containing the same symbol, then i print the difference
+                    //     threeMinutesAgoArray[2].combined?.filter((obj) => {
+                    //         if (obj.symbol === "ETHUSDT") {
+                    //             let priceNow = parseFloat(obj.c);
+                    //             let threeMinutesAgoPrice = parseFloat(obj.price);
+                    //             let difference = "";
 
-                    // const btcNowVsOneToFiftyNineSecondsAgo
+                    //             if (priceNow >= threeMinutesAgoPrice) {
+                    //                 difference = `+${parseFloat(priceNow - threeMinutesAgoPrice).toFixed(2)}`;
+
+                    //             }
+                    //             if (threeMinutesAgoPrice > priceNow) {
+                    //                 difference = `-${parseFloat(threeMinutesAgoPrice - priceNow).toFixed(2)}`;
+                    //             }
+
+                    //             //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
+                    //             console.log(`ETHUSDT (3m):`, priceNow, `(${difference}$)`, " vs ", threeMinutesAgoPrice, `(${threeMinutesAgo.serverTime.replace("09/02/2021,", "")} )`)
 
 
-                    // pastMinute.USDT_ALL.filter((obj) => {
-                    //     if (obj.symbol === "SFPUSDT") {
+                    //         }
+                    //     })
 
-                    //         // Reading SFPUSDT from Redis DB every second ( it gets new data every minute, and compares only with last element, 1 min ago)
-                    //         console.log({
-                    //             time: pastMinute.serverTime,
-                    //             symbol: obj.symbol,
-                    //             price: obj.price
-                    //         })
-
-
-                    //     }
-                    // })
-
-                    // console.log(this.coinsUSDT);
-
-                    // console.log(sfp);
+                    // }
 
 
                 }
