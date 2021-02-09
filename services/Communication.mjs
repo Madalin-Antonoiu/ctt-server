@@ -2,6 +2,9 @@ import WebSocket from "ws";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
 import { internalExchangeInfo } from "../controllers/binance.mjs"
+import differenceBy from "lodash/differenceBy.js";
+import redis from "redis";
+
 
 dotenv.config();
 
@@ -12,7 +15,19 @@ class Communication {
             `wss://stream.binance.com:9443/ws/!ticker@arr`);
         this.globalData = [];
         this.timeout = 10000;
+
+        //redis
+        this.redisOptions = {
+            host: process.env.REDIS_HOST,
+            port: 6379,
+        }
+        this.redisClient = redis.createClient(this.redisOptions);
+
+        //Chat IDs
+        this.golemID = "-587747842";
+        this.golemDebugID = "-590474568";
     }
+
     telegramBot() {
         this.bot.start((ctx) => ctx.reply('Welcome - /help \n - /start \n - /eth'))
         this.bot.help((ctx) => ctx.reply('- /help \n - /start \n - /eth'))
@@ -54,7 +69,70 @@ class Communication {
 
 
     }
+    redis() {
+        this.redisClient.on("error", (err) => {
+            this.bot.telegram.sendMessage(this.golemDebugID, err);
+            console.log("eroare aici", err);
+        });
+        this.redisClient.on("connect", () => {
+            console.log("Redis connected.");
+        });
+
+        this.getInfoAndCompareItToRedis = async () => {
+            const result = await internalExchangeInfo();
+
+            this.redisClient.get("exchangeInfo", (err, reply) => {
+                if (err) {
+                    this.bot.telegram.sendMessage(this.golemDebugID, err);
+                }
+
+                let response = JSON.parse(reply);
+
+                if (result.tradingUSDT.length !== response.tradingUSDT.length) {
+                    let monedaNoua = differenceBy(result.tradingUSDT, response.tradingUSDT, "baseAsset");
+                    this.bot.telegram.sendMessage(this.golemID, `MONEDA NOUA : ${monedaNoua} !!! `);
+                } else {
+                    this.bot.telegram.sendMessage(this.golemDebugID, `No difference. \n Now: ,${result.tradingUSDT.length}, Redis: ${response.tradingUSDT.length}`);
+                }
+            });
+
+
+        }
+
+        this.saveToRedis = async () => {
+            const result = await internalExchangeInfo();
+            this.redisClient.set("exchangeInfo", JSON.stringify(result));
+
+            this.redisClient.get("exchangeInfo", (err, reply) => {
+                if (err) {
+                    this.bot.telegram.sendMessage(this.golemDebugID, err);
+                }
+                let response = JSON.parse(reply);
+
+                this.bot.telegram.sendMessage(this.golemDebugID, `Redis Saved: ${response.serverTime} - ${response.tradingUSDT.length}`);
+                return true
+            });
+
+
+
+        }
+
+        this.saveToRedis().then(() => {
+            this.getInfoAndCompareItToRedis();
+        })
+
+        setInterval(async () => {
+            this.getInfoAndCompareItToRedis();
+        }, 120000) // 2 min
+
+        setInterval(async () => {
+            this.saveToRedis();
+        }, 1200000) // 5 min
+
+
+    }
     start() {
+        this.redis();
         this.telegramBot();
         this.websocket();
     }
@@ -76,7 +154,9 @@ class Communication {
                     //         $: this.helpers.numberWithCommas(obj.q),
                     //     });
                     // }
-                    this.helpers.priceAlert(obj, "BTCUSDT", 43650);
+
+                    // THIS IS HOW YOU SET UP AN ALERT
+                    //this.helpers.priceAlert(obj, "BTCUSDT", 43650);
 
 
 
@@ -98,16 +178,18 @@ class Communication {
                     let reply = `${symbol} is ${targetPrice}.`
                     console.log(reply);
 
-                    this.bot.telegram.sendMessage("-587747842", reply)
+                    this.bot.telegram.sendMessage(this.golemID, reply)
                 } else if (closedPrice > targetPrice && closedPrice <= targetPrice + zeroPointZeroFivePercent
                 ) {
-                    let reply = `${symbol} is ${parseFloat(closedPrice - targetPrice).toFixed(2)} more than target price of ${targetPrice}.`
-                    this.bot.telegram.sendMessage("-587747842", reply)
+                    let reply = `${symbol} is ${parseFloat(closedPrice - targetPrice).toFixed(2)
+                        } more than target price of ${targetPrice}.`
+                    this.bot.telegram.sendMessage(this.golemID, reply)
                     console.log(reply);
                 } else if (closedPrice < targetPrice && closedPrice >= targetPrice - zeroPointZeroFivePercent) {
-                    let reply = `${symbol} is ${parseFloat(targetPrice - closedPrice).toFixed(2)} less than target price of ${targetPrice}.`
+                    let reply = `${symbol} is ${parseFloat(targetPrice - closedPrice).toFixed(2)
+                        } less than target price of ${targetPrice}.`
                     console.log(reply);
-                    this.bot.telegram.sendMessage("-587747842", reply)
+                    this.bot.telegram.sendMessage(this.golemID, reply)
                 }
             }
         }

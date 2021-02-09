@@ -7,8 +7,6 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import Communication from "./services/Communication.mjs"
-import redis from "redis";
-
 
 
 dotenv.config();
@@ -19,28 +17,8 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   methods: "POST", // ONLY ACCEPTING POST
 };
-const redisOptions = {
-  host: process.env.REDIS_HOST,
-  port: 6379,
-}
 
 
-//Redis
-const client = redis.createClient(redisOptions);
-client.on("error", function (error) {
-  console.error(error);
-});
-client.on("connect", (ev) => {
-  console.log("Redis connected.");
-  client.set("foo", "TO THE MOON");
-
-  client.get("foo", (err, reply) => {
-    // reply is null when the key is missing
-    console.log(reply);
-  });
-
-
-});
 
 
 
