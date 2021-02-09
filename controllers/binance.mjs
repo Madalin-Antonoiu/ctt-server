@@ -91,19 +91,24 @@ export const internalExchangeInfo = async () => {
 
 export const getUSDTPrices = async () => {
   try {
+    const date = new Date().toLocaleString();
+
     let constrObj = {
-      serverTime: null,
-      USDT_ALL: []
+      data: [
+        {
+          serverTime: date,
+          USDT_ALL: []
+        },
+      ]
     };
 
     const response = await binance.get(
       `https://api.binance.com/api/v3/ticker/price`
     );
 
-    constrObj["serverTime"] = new Date().toLocaleString();
     response.data?.map((coin) => {
       if (coin.symbol.endsWith("USDT")) {
-        constrObj["USDT_ALL"] = [...constrObj["USDT_ALL"], coin];
+        constrObj["data"][0]["USDT_ALL"] = [...constrObj["data"][0]["USDT_ALL"], coin];
       }
 
       return true;

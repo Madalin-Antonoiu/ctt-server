@@ -208,7 +208,7 @@ class Communication {
 
 
             });
-            this.coinsUSDT = newArray;
+            this.coinsUSDT = { time: new Date().toLocaleString(), data: newArray }
         },
         priceAlert: (obj, symbol, targetPrice) => {
             let incomingSymbol = obj.s;
@@ -266,7 +266,8 @@ class Communication {
 
 
                 });
-                this.coinsUSDT = newArray;
+
+                this.coinsUSDT = { time: new Date().toLocaleString(), data: newArray };
             } catch (e) {
                 console.log(e)
             }
@@ -299,23 +300,25 @@ class Communication {
                     // then it would be easy to compare them and inform
 
 
+
                     let pastMinute = redisAsObj[redisAsObj.length - 1];
+                    let lastMinuteArray = [pastMinute, this.coinsUSDT]
+                    console.log(lastMinuteArray);
+                    // pastMinute.USDT_ALL.filter((obj) => {
+                    //     if (obj.symbol === "SFPUSDT") {
 
-                    pastMinute.USDT_ALL.filter((obj) => {
-                        if (obj.symbol === "SFPUSDT") {
-
-                            // Reading SFPUSDT from Redis DB every second ( it gets new data every minute, and compares only with last element, 1 min ago)
-                            console.log({
-                                time: pastMinute.serverTime,
-                                symbol: obj.symbol,
-                                price: obj.price
-                            })
+                    //         // Reading SFPUSDT from Redis DB every second ( it gets new data every minute, and compares only with last element, 1 min ago)
+                    //         console.log({
+                    //             time: pastMinute.serverTime,
+                    //             symbol: obj.symbol,
+                    //             price: obj.price
+                    //         })
 
 
-                        }
-                    })
+                    //     }
+                    // })
 
-                    console.log(this.coinsUSDT);
+                    // console.log(this.coinsUSDT);
 
                     // console.log(sfp);
 
