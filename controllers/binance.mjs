@@ -82,8 +82,35 @@ export const internalExchangeInfo = async () => {
       "baseAsset"
     );
 
+    console.log(constrObj);
     return constrObj;
   } catch (e) {
     return e;
   }
 };
+
+export const getUSDTPrices = async () => {
+  try {
+    let constrObj = {
+      serverTime: null,
+      USDT_ALL: []
+    };
+
+    const response = await binance.get(
+      `https://api.binance.com/api/v3/ticker/price`
+    );
+
+    constrObj["serverTime"] = new Date().toLocaleString();
+    response.data?.map((coin) => {
+      if (coin.symbol.endsWith("USDT")) {
+        constrObj["USDT_ALL"] = [...constrObj["USDT_ALL"], coin];
+      }
+
+      return true;
+    });
+
+    return constrObj;
+  } catch (e) {
+    return e;
+  }
+}

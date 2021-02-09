@@ -49,5 +49,5 @@ console.log("Server listening on", port);
 
 
 const communi = new Communication();
-communi.start();
+communi.discoverProfitableCoins();
 

@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
-import { internalExchangeInfo } from "../controllers/binance.mjs"
+import { internalExchangeInfo, getUSDTPrices } from "../controllers/binance.mjs"
 import differenceBy from "lodash/differenceBy.js";
 import redis from "redis";
 
@@ -10,10 +10,10 @@ dotenv.config();
 
 class Communication {
     constructor() {
-        this.bot = new Telegraf(process.env.BOT_TOKEN)
         this.binanceSocket = new WebSocket(
             `wss://stream.binance.com:9443/ws/!ticker@arr`);
-        this.globalData = [];
+        this.bot = new Telegraf(process.env.BOT_TOKEN)
+        this.coinsUSDT = [];
         this.timeout = 10000;
 
         //redis
@@ -27,7 +27,6 @@ class Communication {
         this.golemID = "-587747842";
         this.golemDebugID = "-590474568";
     }
-
     telegramBot() {
         this.bot.start((ctx) => ctx.reply('Welcome - /help \n - /start \n - /eth'))
         this.bot.help((ctx) => ctx.reply('- /help \n - /start \n - /eth'))
@@ -58,7 +57,7 @@ class Communication {
                 });
 
                 function intervalFunc() {
-                    ws.send(JSON.stringify(globalData));
+                    ws.send(JSON.stringify(coinsUSDT));
                 }
                 setInterval(intervalFunc, 1000);
             });
@@ -66,7 +65,6 @@ class Communication {
         this.binanceSocket.onclose = () => {
             console.log("Stream closed");
         };
-
 
     }
     redis() {
@@ -136,7 +134,49 @@ class Communication {
         this.telegramBot();
         this.websocket();
     }
+    discoverProfitableCoins() {
+        //1. Launch Telegram Bot
+        this.bot.command("coins", async (ctx) => {
+            ctx.reply("Obtaining information...");
+            const result = await internalExchangeInfo();
+            // Run the exchangeInfo API
+            ctx.reply(`USDT - Active : ${result.tradingUSDT.length}, Parked: ${result.parkedUSDT.length}\n BTC - Active : ${result.tradingBTC.length}, Parked: ${result.parkedBTC.length}  `);
+        });
+        this.bot.launch();
 
+        //2.Websocket is launched in Constructor. Listen to it
+        this.binanceSocket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            this.helpers.discoverCoins(data);
+        };
+        this.binanceSocket.onopen = () => {
+            console.log("Stream open");
+        };
+        this.binanceSocket.onclose = () => {
+            console.log("Stream closed");
+        };
+
+        //3. Compare Data & Alert
+        // Open Redis
+        this.redisClient.on("error", (err) => {
+            this.bot.telegram.sendMessage(this.golemDebugID, err);
+            console.log("eroare aici", err);
+        });
+        this.redisClient.on("connect", () => {
+            console.log("Redis connected.");
+        });
+
+        console.log("Will save prices to Redis in 60s.")
+
+        setInterval(() => {
+            this.helpers.savePricesToRedisEveryMinute();
+            console.log("Saved to Redis.")
+        }, 60000)
+        // Data comes every second from websocket.  Save it to Redis every x seconds for comparison later
+        // Keep Comparing it to Redis
+        // Alert for each coin if profitable
+
+    }
     helpers = {
         numberWithCommas: (x) => {
             return parseInt(x)
@@ -149,11 +189,11 @@ class Communication {
                 if (obj.s.includes("USDT")) {
 
                     // Debug
-                    // if (obj.s === "BTCUSDT") {
-                    //     console.log(obj.s + ": " + parseFloat(obj.c).toFixed(2), this.helpers.numberWithCommas(obj.v), {
-                    //         $: this.helpers.numberWithCommas(obj.q),
-                    //     });
-                    // }
+                    if (obj.s === "BTTUSDT") {
+                        console.log(obj.s + ": " + parseFloat(obj.c), this.helpers.numberWithCommas(obj.v), {
+                            $: this.helpers.numberWithCommas(obj.q),
+                        });
+                    }
 
                     // THIS IS HOW YOU SET UP AN ALERT
                     //this.helpers.priceAlert(obj, "BTCUSDT", 43650);
@@ -165,7 +205,7 @@ class Communication {
 
 
             });
-            this.globalData = newArray;
+            this.coinsUSDT = newArray;
         },
         priceAlert: (obj, symbol, targetPrice) => {
             let incomingSymbol = obj.s;
@@ -191,6 +231,54 @@ class Communication {
                     console.log(reply);
                     this.bot.telegram.sendMessage(this.golemID, reply)
                 }
+            }
+        },
+        discoverCoins: (data) => {
+
+            //Data is an array with coins that changed vs 24h ago. Save prices to redis every 1 min
+            try {
+                const newArray = data?.filter((obj) => {
+
+
+                    if (obj.s.includes("USDT")) {
+
+
+
+                        // Debug
+                        // if (obj.s === "BTTUSDT") {
+                        //     console.log(obj.s + ": " + parseFloat(obj.c), this.helpers.numberWithCommas(obj.v), {
+                        //         $: this.helpers.numberWithCommas(obj.q),
+                        //     });
+                        // }
+
+                        // THIS IS HOW YOU SET UP AN ALERT
+                        //this.helpers.priceAlert(obj, "BTCUSDT", 43650);
+
+
+
+                        return obj;
+                    }
+
+
+                });
+                this.coinsUSDT = newArray;
+            } catch (e) {
+                console.log(e)
+            }
+            // Save to Redis every 60 seconds/ 1 minute - 
+            // Compare coinsUSDT every second against it 
+
+
+            //console.log(this.coinsUSDT); // Around 80.500 length containing all USDT coins data, updated every second
+        },
+        savePricesToRedisEveryMinute: async () => {
+            const response = await getUSDTPrices();
+
+            if (response) {
+                console.log(response);
+                console.log(this.coinsUSDT)
+            } else {
+                console.error("Error")
             }
         }
     }
