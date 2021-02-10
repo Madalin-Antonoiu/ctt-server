@@ -184,6 +184,7 @@ class Communication {
 
         setInterval(() => {
             // In reality, i should read the value first, extract last and leave it there, for 1h data
+            // if length is at least 59, then remove stuff, with cron job
             this.redisClient.set("usdtMarketPrices", "");
             this.bot.telegram.sendMessage(this.golemDebugID, "Debug, every hour i  clear Redis 'usdtMarketPrices' ");
         }, 3600000) //1h
@@ -295,82 +296,76 @@ class Communication {
                 if (reply !== "") {
                     let redisAsObj = JSON.parse(reply);
                     //console.log("Redis READ:", redisAsObj, reply.length); //, "Wsocket:", this.coinsUSDT - IMPORTANT DEBUG
-
-                    // At this point i have this.coinsUSDT array of objects containing data every sec about coins that changed last 24h
-                    // And redisAsObj which has an array of objects every minute saving price data
-
-                    //compareToAMinuteAgo() - i get last element's price of redisAsObj array (supposed to be past minute), let`s say SFPUSDT
-                    // i also get SFPUSDT from this.coinsUSDT( if it exists, this is very unconsistent API)
-                    // console log both, every second
-                    //console.log(redisAsObj);
-
-
-                    // I should probably create a new array
-                    // containing the ever changing new second data, and the minute past
-                    // then it would be easy to compare them and inform
-
-
+                    const coin = "DOGEUSDT"
                     let pastMinute = redisAsObj[redisAsObj.length - 1];
-                    const result = _.merge(pastMinute.USDT_ALL, this.coinsUSDT.data)
-                    let lastMinuteArray = [{ wsTime: this.coinsUSDT.time }, { pastMinute: pastMinute.serverTime }, { combined: result }]; // this is 1s ago to 59 s ago, then renews 
+
+                    let arr1 = pastMinute.USDT_ALL;
+                    let arr2 = this.coinsUSDT.data;
 
 
 
-                    const lm = lastMinuteArray[2].combined?.find(obj => obj.symbol === "ETHUSDT");
+                    const merged = this.helpers.merge(arr1, arr2)
 
-                    const log = (obj) => {
+                    //console.log(merged); // this contains all the data combined every second
 
-                        let priceNow = parseFloat(obj.c);
-                        let pastMinutePrice = parseFloat(obj.price);
-                        let difference = "";
 
-                        if (priceNow >= pastMinutePrice) {
-                            difference = `+${parseFloat(priceNow - pastMinutePrice).toFixed(2)}`;
+                    let lastMinuteArray = [{ wsTime: this.coinsUSDT.time }, { pastMinute: pastMinute.serverTime }, { combined: merged }]; // this is 1s ago to 59 s ago, then renews 
+                    const lm = lastMinuteArray[2].combined?.find(obj => obj.symbol === coin);
+                    // console.log(lm);
+
+                    const log = (obj, timeframe, serverTime) => {
+
+                        let priceNow = Number(obj.c); //number
+                        let redisPrice = Number(obj.price);
+                        let difference = null;
+                        let percentage = null;
+
+                        if (priceNow >= redisPrice) {
+                            if (redisPrice > 0.99) {
+                                difference = "+" + Number(priceNow - redisPrice).toFixed(2)
+                                percentage = "+" + this.helpers.percentageDiff(priceNow, redisPrice) + "%";
+                            } else {
+                                difference = "+" + Number(priceNow - redisPrice).toFixed(redisPrice.toString().length)
+                                percentage = "+" + this.helpers.percentageDiff(priceNow, redisPrice) + "%";
+                            }
+
 
                         }
-                        if (pastMinutePrice > priceNow) {
-                            difference = `-${parseFloat(pastMinutePrice - priceNow).toFixed(2)}`;
+                        if (redisPrice > priceNow) {
+                            if (redisPrice > 0.99) {
+                                percentage = "-" + this.helpers.percentageDiff(redisPrice, priceNow) + "%";
+                                difference = "-" + Number(redisPrice - priceNow).toFixed(2)
+                            } else {
+                                difference = "-" + Number(redisPrice - priceNow).toFixed(redisPrice.toString().length)
+                                percentage = "-" + this.helpers.percentageDiff(redisPrice, priceNow) + "%";
+                            }
+
                         }
 
                         //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
                         return {
-                            data: `ETHUSDT (1m): ${priceNow}(${difference}$) vs  ${pastMinutePrice}(${pastMinute.serverTime.replace("09/02/2021,", "")})`
+                            difference: `${coin}: (${timeframe}) ${difference}`,
+                            data: `${coin} (${timeframe}): ${priceNow}(${difference}$, [${percentage}]) vs  ${redisPrice}(${serverTime.serverTime.replace("09/02/2021,", "")})`
                         }
 
                     }
 
                     if (lm) {
-                        console.log(log(lm).data);
+                        console.log(log(lm, "1m", pastMinute).data);
                     }
 
 
                     //console.log(threeMinutesAgo); undefined until 3m of data are present
                     // let threeMinutesAgo = redisAsObj[redisAsObj.length - 4];
                     // if (threeMinutesAgo) {
-                    //     const result2 = _.merge(threeMinutesAgo?.USDT_ALL, this.coinsUSDT.data)
+                    //     const result2 = _.mergeWith(threeMinutesAgo?.USDT_ALL, this.coinsUSDT.data)
                     //     let threeMinutesAgoArray = [{ wsTime: this.coinsUSDT.time }, { threeMinutesAgo: threeMinutesAgo.serverTime }, { combined: result2 }]; // this is 1s ago to 59 s ago, then renews 
 
-                    //     threeMinutesAgoArray[2].combined?.filter((obj) => {
-                    //         if (obj.symbol === "ETHUSDT") {
-                    //             let priceNow = parseFloat(obj.c);
-                    //             let threeMinutesAgoPrice = parseFloat(obj.price);
-                    //             let difference = "";
-
-                    //             if (priceNow >= threeMinutesAgoPrice) {
-                    //                 difference = `+${parseFloat(priceNow - threeMinutesAgoPrice).toFixed(2)}`;
-
-                    //             }
-                    //             if (threeMinutesAgoPrice > priceNow) {
-                    //                 difference = `-${parseFloat(threeMinutesAgoPrice - priceNow).toFixed(2)}`;
-                    //             }
-
-                    //             //console.log(`ETHUSDT:`, parseFloat(priceNow), " vs ", parseFloat(obj.price), `(${pastMinute.serverTime.replace("09/02/2021,", "")} )`)
-                    //             console.log(`ETHUSDT (3m):`, priceNow, `(${difference}$)`, " vs ", threeMinutesAgoPrice, `(${threeMinutesAgo.serverTime.replace("09/02/2021,", "")} )`)
-
-
-                    //         }
-                    //     })
-
+                    //     const threem = threeMinutesAgoArray[2].combined?.find((obj) => obj.symbol === coin);
+                    //     if (threem) {
+                    //         console.log(log(threem, "3m", threeMinutesAgo).data);
+                    //         // console.log(log(lm, "1m", pastMinute).difference, ",", log(threem, "3m", threeMinutesAgo).difference);
+                    //     }
                     // }
 
 
@@ -416,6 +411,24 @@ class Communication {
                 this.bot.telegram.sendMessage(this.golemDebugID, e);
             }
         },
+        merge: (arr1, arr2) => {
+            let merged = [];
+
+            for (let i = 0; i < arr1.length; i++) {
+                merged.push({
+                    ...arr1[i],
+                    ...(arr2.find((itmInner) => itmInner.s === arr1[i].symbol))
+                }
+                );
+            }
+
+            return merged
+        },
+        percentageDiff: (a, b) => {
+
+            return (100 * Math.abs((a - b) / ((a + b) / 2))).toFixed(2);
+
+        }
 
     }
 }
