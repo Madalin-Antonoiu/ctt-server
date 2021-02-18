@@ -91,7 +91,7 @@ export const internalExchangeInfo = async () => {
 
 export const getUSDTPrices = async () => {
   try {
-    const date = new Date().toLocaleString();
+    const date = new Date() // DEBUG. Here is where i set time for entire every min //.toLocaleString();
 
     let constrObj = {
       data: [
